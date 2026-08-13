@@ -4,9 +4,15 @@ import cv2
 import numpy as np
 import time
 
+roi_coords = {"pc": (1780, 1860, 30, 110), "emu": (1764, 1853, 40, 120)}
+
 
 def compare_white_pixels(
-    current_frame, paused_gray, threshold=70, white_threshold=0.85
+    current_frame,
+    paused_gray,
+    threshold=70,
+    white_threshold=0.85,
+    pc_client=False,
 ):
     """
     Compare two images based on their white pixels.
@@ -22,8 +28,9 @@ def compare_white_pixels(
     - bool: True if 90% of the white pixels in the paused image correspond to white pixels in the current frame.
     """
     # memo
-    y1, y2 = 40, 120
-    x1, x2 = 1764, 1853
+    x1, x2, y1, y2 = roi_coords["pc"] if pc_client else roi_coords["emu"]
+    if pc_client:
+        white_threshold = 0.78
     # Ensure both images are loaded
     if current_frame is None or paused_gray is None:
         print("Error: One or both images are None")

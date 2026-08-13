@@ -8,9 +8,15 @@ from pause_detect_utils import (
 
 
 def split_and_rewrite_video(
-    input_folder="TODO", output_parent_folder="output_videos", nvidia_gpu=True
+    input_folder="TODO",
+    output_parent_folder="output_videos",
+    nvidia_gpu=True,
+    pc_client=False,
 ):
-    pause_image = cv2.imread("cnpause.png")
+    if pc_client:
+        pause_image = cv2.imread("pc_pause.png")
+    else:
+        pause_image = cv2.imread("cnpause.png")
     if pause_image is None:
         raise Exception("Error: Could not load the pause image.")
     # Get all video files (mkv, mov) in the input folder
@@ -39,7 +45,11 @@ def split_and_rewrite_video(
         print(f"Processing video: {video_file}...")
         t0 = time.time()
         write_video_ffmpeg(
-            video_path, pause_image, output_folder, nvidia_gpu=nvidia_gpu
+            video_path,
+            pause_image,
+            output_folder,
+            nvidia_gpu=nvidia_gpu,
+            pc_client=pc_client,
         )
         # fallback option if ffmpeg fails
         # process_and_output_video(video_path, pause_image, output_folder)
@@ -75,7 +85,9 @@ def process_and_output_video(video_path, pause_image, output_folder):
         frame += 1
 
 
-def write_video_ffmpeg(video_path, pause_image, output_folder, nvidia_gpu=False):
+def write_video_ffmpeg(
+    video_path, pause_image, output_folder, nvidia_gpu=False, pc_client=False
+):
     output_params_nvidia = {
         "vcodec": "h264_nvenc",
         "pix_fmt": "yuv420p",
@@ -109,13 +121,12 @@ def write_video_ffmpeg(video_path, pause_image, output_folder, nvidia_gpu=False)
         .overwrite_output()
         .run_async(pipe_stdin=True)
     )
-
     frame = 0
     while True:
         ret, img = cap.read()
         if not ret:
             break
-        is_detected = compare_white_pixels(img, paused_gray)
+        is_detected = compare_white_pixels(img, paused_gray, pc_client=pc_client)
         if not is_detected:
             process.stdin.write(img.tobytes())
         if frame % (int(fps) * 60) == 0:
@@ -156,6 +167,10 @@ def write_video_opencv(video_path, detection_results):
 if __name__ == "__main__":
     # Process the videos in the TODO folder and save the output in the output_videos folder
     # Change nvidia_gpu to True if you have a NVIDIA GPU for ffmpeg
+    # Change pc_client to True if the recording is of the PC client
     split_and_rewrite_video(
-        input_folder="TODO", output_parent_folder="output_videos", nvidia_gpu=False
+        input_folder="TODO",
+        output_parent_folder="output_videos",
+        nvidia_gpu=False,
+        pc_client=False,
     )
