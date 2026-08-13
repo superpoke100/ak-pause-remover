@@ -1,10 +1,19 @@
-# video_detection.py
-
 import cv2
 import numpy as np
 import time
+from skimage.metrics import structural_similarity as ssim
 
-roi_coords = {"pc": (1780, 1860, 30, 110), "emu": (1764, 1853, 40, 120)}
+roi_coords = {"pc": (1790, 1860, 45, 105), "emu": (1764, 1853, 40, 120)}
+
+
+def compare_ssim(test_img, paused_img, threshold=0.5, pc_client=True):
+    x1, x2, y1, y2 = roi_coords["pc"] if pc_client else roi_coords["emu"]
+    paused_roi = paused_img[y1:y2, x1:x2]
+    test_roi = cv2.cvtColor(test_img[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
+    assert (
+        paused_roi.shape == test_roi.shape
+    ), "Reference and test ROIs must have the same shape for SSIM calculation."
+    return ssim(paused_roi, test_roi) > threshold
 
 
 def compare_white_pixels(

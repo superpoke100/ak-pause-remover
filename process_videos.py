@@ -3,6 +3,7 @@ import cv2
 import time
 import ffmpeg
 from pause_detect_utils import (
+    compare_ssim,
     compare_white_pixels,
 )
 
@@ -126,7 +127,10 @@ def write_video_ffmpeg(
         ret, img = cap.read()
         if not ret:
             break
-        is_detected = compare_white_pixels(img, paused_gray, pc_client=pc_client)
+        if pc_client:
+            is_detected = compare_ssim(img, paused_gray, pc_client=pc_client)
+        else:
+            is_detected = compare_white_pixels(img, paused_gray, pc_client=pc_client)
         if not is_detected:
             process.stdin.write(img.tobytes())
         if frame % (int(fps) * 60) == 0:
