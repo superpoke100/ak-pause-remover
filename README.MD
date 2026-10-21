@@ -6,13 +6,11 @@
 ## Supported Configurations
 - **MuMu Emulator**: 1920x1080 resolution, native recording feature
 - **Official PC Client**: 1920x1080
-If using other recording software, ensure that UI elements of the emulator are not captured.
+- If using other recording software, ensure that UI elements of the emulator are not captured.
 
 ## OPTIONS
 ```
 usage: AK Pause Remover [-h] [--emu] [--gpu]
-
-Remove pauses from AK stage recordings
 
 options:
   -h, --help  show this help message and exit
