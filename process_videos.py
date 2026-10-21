@@ -2,6 +2,8 @@ import os
 import cv2
 import time
 import ffmpeg
+import argparse
+from pathlib import Path
 from pause_detect_utils import (
     compare_ssim,
     compare_white_pixels,
@@ -9,15 +11,19 @@ from pause_detect_utils import (
 
 
 def split_and_rewrite_video(
-    input_folder="TODO",
-    output_parent_folder="output_videos",
-    nvidia_gpu=True,
-    pc_client=False,
+    input_foldername="TODO",
+    output_foldername="output_videos",
+    nvidia_gpu=False,
+    pc_client=True,
 ):
+    ROOT_DIR = Path(__file__).parent
+    input_folder = ROOT_DIR / input_foldername
+    output_root_folder = ROOT_DIR / output_foldername
+    print(ROOT_DIR)
     if pc_client:
-        pause_image = cv2.imread("pc_pause.png")
+        pause_image = cv2.imread(ROOT_DIR / "pc_pause.png")
     else:
-        pause_image = cv2.imread("cnpause.png")
+        pause_image = cv2.imread(ROOT_DIR / "cn_pause.png")
     if pause_image is None:
         raise Exception("Error: Could not load the pause image.")
     # Get all video files (mkv, mov) in the input folder
@@ -31,7 +37,7 @@ def split_and_rewrite_video(
 
         # Get the base name (without extension) for the output folder
         base_name = os.path.splitext(video_file)[0]
-        output_folder = os.path.join(output_parent_folder, base_name)
+        output_folder = os.path.join(output_root_folder, base_name)
 
         # Create the output folder if it doesn't exist
         if not os.path.exists(output_folder):
@@ -172,9 +178,24 @@ if __name__ == "__main__":
     # Process the videos in the TODO folder and save the output in the output_videos folder
     # Change nvidia_gpu to True if you have a NVIDIA GPU for ffmpeg
     # Change pc_client to True if the recording is of the PC client
+    parser = argparse.ArgumentParser(
+        prog="AK Pause Remover",
+        description="Remove pauses from AK stage recordings",
+    )
+    parser.add_argument(
+        "--emu",
+        action="store_true",
+        help="Configure detection for MuMu Emulator. Default is PC.",
+    )
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Use NVIDIA GPU video encoder. Default is CPU.",
+    )
+    args = parser.parse_args()
     split_and_rewrite_video(
-        input_folder="TODO",
-        output_parent_folder="output_videos",
-        nvidia_gpu=False,
-        pc_client=False,
+        input_foldername="TODO",
+        output_foldername="output_videos",
+        nvidia_gpu=args.gpu,
+        pc_client=not args.emu,
     )
