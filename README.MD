@@ -1,3 +1,9 @@
+## INSTALLATION
+In the project directory:
+```
+pip install -r requirements.txt
+```
+
 ## USAGE
 1. Place videos to process in the TODO folder.
 2. Run process_videos.py with desired options (see below)
@@ -19,6 +25,6 @@ options:
 ```
 
 ## Credits
-Tums for the original version of this code.
+Tums for the original version of this code and to Team FUK.
 
 

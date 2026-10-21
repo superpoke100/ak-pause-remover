@@ -1,5 +1,6 @@
 __pycache__/*
 output_videos/*
 TODO/*
+!TODO/.gitkeep
 examples/*
 test*.py
