@@ -2,12 +2,8 @@ import os
 import cv2
 import time
 import ffmpeg
-import argparse
 from pathlib import Path
-from pause_detect_utils import (
-    compare_ssim,
-    compare_white_pixels,
-)
+from .detection_methods import compare_canny
 
 
 def split_and_rewrite_video(
@@ -16,19 +12,22 @@ def split_and_rewrite_video(
     nvidia_gpu=False,
     pc_client=True,
 ):
-    ROOT_DIR = Path(__file__).parent
+    ROOT_DIR = Path(__file__).parent.parent
+    PAUSE_IMG_DIR = ROOT_DIR / "pause_images" / ("emu" if not pc_client else "pc")
     input_folder = ROOT_DIR / input_foldername
     output_root_folder = ROOT_DIR / output_foldername
     print(ROOT_DIR)
     if pc_client:
-        pause_image = cv2.imread(ROOT_DIR / "pc_pause.png")
+        pause_image = cv2.imread(PAUSE_IMG_DIR / "pause.png")
     else:
-        pause_image = cv2.imread(ROOT_DIR / "cn_pause.png")
+        pause_image = cv2.imread(PAUSE_IMG_DIR / "pause.png")
     if pause_image is None:
         raise Exception("Error: Could not load the pause image.")
     # Get all video files (mkv, mov) in the input folder
     video_files = [
-        f for f in os.listdir(input_folder) if f.endswith((".mkv", ".mov", "mp4"))
+        f
+        for f in os.listdir(input_folder)
+        if f.endswith((".mkv", ".mov", "mp4", ".webm"))
     ]
 
     # Process each video file
@@ -61,7 +60,7 @@ def split_and_rewrite_video(
         # fallback option if ffmpeg fails
         # process_and_output_video(video_path, pause_image, output_folder)
         t1 = time.time()
-        print(f"Finished processing {video_file}. Videos saved in {output_folder}.")
+        print(f"Finished processing {video_file}. Videos saved in {output_folder}.\n")
         print(f"Time taken for processing and output: {t1-t0:.2f} seconds.")
 
 
@@ -71,8 +70,6 @@ def process_and_output_video(video_path, pause_image, output_folder):
     fps = cap.get(cv2.CAP_PROP_FPS)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    paused_gray = cv2.cvtColor(pause_image, cv2.COLOR_BGR2GRAY)
     writer = cv2.VideoWriter(
         os.path.join(output_folder, "output.mp4"),
         cv2.VideoWriter_fourcc(*"mp4v"),  # or another codec
@@ -84,7 +81,7 @@ def process_and_output_video(video_path, pause_image, output_folder):
         ret, img = cap.read()
         if not ret:
             break
-        is_detected = compare_white_pixels(img, paused_gray)
+        is_detected = compare_canny(img, pause_image, pc_client=True)
         if not is_detected:
             writer.write(img)
         if frame % (int(fps) * 60) == 0:
@@ -93,7 +90,11 @@ def process_and_output_video(video_path, pause_image, output_folder):
 
 
 def write_video_ffmpeg(
-    video_path, pause_image, output_folder, nvidia_gpu=False, pc_client=False
+    video_path,
+    pause_image,
+    output_folder,
+    nvidia_gpu=False,
+    pc_client=False,
 ):
     output_params_nvidia = {
         "vcodec": "h264_nvenc",
@@ -129,73 +130,17 @@ def write_video_ffmpeg(
         .run_async(pipe_stdin=True)
     )
     frame = 0
+
     while True:
         ret, img = cap.read()
         if not ret:
             break
-        if pc_client:
-            is_detected = compare_ssim(img, paused_gray, pc_client=pc_client)
-        else:
-            is_detected = compare_white_pixels(img, paused_gray, pc_client=pc_client)
-        if not is_detected:
+        pause_detected = compare_canny(img, paused_gray, pc_client=pc_client)
+        if not pause_detected:
             process.stdin.write(img.tobytes())
         if frame % (int(fps) * 60) == 0:
             print(f"Processed {frame/(int(fps)*60)} minutes...")
+
         frame += 1
     process.stdin.close()
     process.wait()
-
-
-def write_video_opencv(video_path, detection_results):
-    cap = cv2.VideoCapture(video_path)
-
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    writer = cv2.VideoWriter(
-        "output.mp4",
-        cv2.VideoWriter_fourcc(*"mp4v"),  # or another codec
-        fps,
-        (w, h),
-    )
-
-    frame = 0
-
-    while True:
-        ret, img = cap.read()
-        if not ret:
-            break
-        if not detection_results[frame]:
-            writer.write(img)
-        if frame % (int(fps) * 60) == 0:
-            print(f"Processed {frame/(int(fps)*60)} minutes...")
-        frame += 1
-
-
-# TODO: Use a gpu-neutral approach
-if __name__ == "__main__":
-    # Process the videos in the TODO folder and save the output in the output_videos folder
-    # Change nvidia_gpu to True if you have a NVIDIA GPU for ffmpeg
-    # Change pc_client to True if the recording is of the PC client
-    parser = argparse.ArgumentParser(
-        prog="AK Pause Remover",
-        description="Remove pauses from AK stage recordings",
-    )
-    parser.add_argument(
-        "--emu",
-        action="store_true",
-        help="Configure detection for MuMu Emulator. Default is PC.",
-    )
-    parser.add_argument(
-        "--gpu",
-        action="store_true",
-        help="Use NVIDIA GPU video encoder. Default is CPU.",
-    )
-    args = parser.parse_args()
-    split_and_rewrite_video(
-        input_foldername="TODO",
-        output_foldername="output_videos",
-        nvidia_gpu=args.gpu,
-        pc_client=not args.emu,
-    )

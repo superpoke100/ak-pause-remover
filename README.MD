@@ -6,7 +6,7 @@ pip install -r requirements.txt
 
 ## USAGE
 1. Place videos to process in the TODO folder.
-2. Run process_videos.py with desired options (see below)
+2. Run `main.py` with desired options (see below)
 3. Processed videos will be placed in the folder output_videos/{VIDEO_NAME}/output.mp4 once finished.
 
 ## Supported Configurations
